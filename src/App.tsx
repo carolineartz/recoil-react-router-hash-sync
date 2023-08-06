@@ -13,6 +13,10 @@ function App() {
     console.log('search changed', search)
 
     window.dispatchEvent(new CustomEvent('searchchanged', { detail: { search: search, origin: 'router' } }))
+    // const url = window.location.href
+    // window.location.search = search
+    window.dispatchEvent(new Event('popstate'))
+    // window.location.href = url
   }, [search])
 
   // useEffect(() => {

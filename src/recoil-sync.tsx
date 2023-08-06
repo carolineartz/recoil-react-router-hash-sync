@@ -4,6 +4,7 @@ import { RecoilURLSyncJSON, RecoilURLSync } from 'recoil-sync'
 import { useLocation, createPath, useNavigate } from 'react-router-dom'
 import queryString from 'query-string'
 import { useRecoilState, useSetRecoilState } from 'recoil'
+import { RecoilURLHashParamsSync } from './recoil-sync-url-hash'
 // import { filtersAtom } from './recoil-atoms'
 // import mapKeys from 'lodash.mapkeys'
 
@@ -68,23 +69,19 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
   //   setFilters(deserialize(location.search))
   // }, [])
 
-  // const
   return (
-    <RecoilURLSync
-      // value is an object
+    <RecoilURLHashParamsSync
+      location={{ part: 'queryParams' }}
       serialize={(value: any) => {
         return String(value)
       }}
       deserialize={(value: any) => {
         return String(value)
       }}
-      // value is a string
-      // deserialize={deserialize}
-      location={{ part: 'queryParams' }}
       browserInterface={{
         replaceURL: (urlString: string) => {
           const browserUrl = new URL(urlString)
-          console.log('navigating', browserUrl)
+          console.log('replaceURL navigating', `${browserUrl.pathname}${browserUrl.search}`)
 
           // console.log('replaceURL', url)
           // window.history.replaceState(null, '', url)
@@ -94,22 +91,22 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
         pushURL: (urlString: string) => {
           // console.log('pushURL', url)
           const browserUrl = new URL(urlString)
-          console.log('navigating', browserUrl)
+          console.log('pushURL navigating', `${browserUrl.pathname}${browserUrl.search}`)
           navigate(`${browserUrl.pathname}${browserUrl.search}`, { replace: false })
           // window.history.pushState(null, '', url)
         },
         // pushURL: (url: string) => window.history.pushState(null, '', url),
 
         // @ts-ignore
-        getURL: () => {
-          // const baseLoc = window.document.location
+        // getURL: () => {
+        //   // const baseLoc = window.document.location
 
-          // @ts-ignore
-          // const url: URL = new URL(window.document.location)
-          // const {hash, search, href} = url
-          console.log('get url', window.document.location.href.replace('/#/', '/'))
-          return window.document.location.href.replace('/#/', '/')
-        },
+        //   // @ts-ignore
+        //   // const url: URL = new URL(window.document.location)
+        //   // const {hash, search, href} = url
+        //   console.log('get url', window.document.location.href.replace('/#/', '/'))
+        //   return window.document.location.href.replace('/#/', '/')
+        // },
         listenChangeURL: (handleUpdate: () => void) => {
           const update = () => {
             console.log('listenChangeURL', window.document.location.href)
@@ -121,8 +118,63 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
       }}
     >
       {children}
-    </RecoilURLSync>
+    </RecoilURLHashParamsSync>
   )
+  // const
+  // return (
+  //   <RecoilURLSync
+  //     // value is an object
+  // serialize={(value: any) => {
+  //   return String(value)
+  // }}
+  // deserialize={(value: any) => {
+  //   return String(value)
+  // }}
+  //     // value is a string
+  //     // deserialize={deserialize}
+  //     location={{ part: 'queryParams' }}
+  // browserInterface={{
+  //   replaceURL: (urlString: string) => {
+  //     const browserUrl = new URL(urlString)
+  //     console.log('navigating', browserUrl)
+
+  //     // console.log('replaceURL', url)
+  //     // window.history.replaceState(null, '', url)
+  //     navigate(`${browserUrl.pathname}${browserUrl.search}`, { replace: true })
+  //   },
+  //   // replaceURL: (url: string) => window.history.replaceState(null, '', url),
+  //   pushURL: (urlString: string) => {
+  //     // console.log('pushURL', url)
+  //     const browserUrl = new URL(urlString)
+  //     console.log('navigating', `${browserUrl.pathname}${browserUrl.search}`)
+  //     navigate(`${browserUrl.pathname}${browserUrl.search}`, { replace: false })
+  //     // window.history.pushState(null, '', url)
+  //   },
+  //   // pushURL: (url: string) => window.history.pushState(null, '', url),
+
+  //   // @ts-ignore
+  //   getURL: () => {
+  //     // const baseLoc = window.document.location
+
+  //     // @ts-ignore
+  //     // const url: URL = new URL(window.document.location)
+  //     // const {hash, search, href} = url
+  //     console.log('get url', window.document.location.href.replace('/#/', '/'))
+  //     return window.document.location.href.replace('/#/', '/')
+  //   },
+  //   listenChangeURL: (handleUpdate: () => void) => {
+  //     const update = () => {
+  //       console.log('listenChangeURL', window.document.location.href)
+  //       handleUpdate()
+  //     }
+  //     window.addEventListener('searchchanged', update)
+  //     return () => window.removeEventListener('searchchanged', update)
+  //   }
+  // }}
+  //   >
+  //     {children}
+  //   </RecoilURLSync>
+  // )
 }
 
 // getURL() {

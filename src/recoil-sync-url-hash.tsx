@@ -39,8 +39,9 @@ const unwrapState = (state: ItemSnapshot): ItemState =>
       .filter(([, value]) => !(value instanceof DefaultValue))
   )
 
-function parseURL(href: string, loc: LocationOption, deserialize: (string: string) => any): ?ItemSnapshot {
+function parseURL(href: string, loc: LocationOption, deserialize: (string: string) => any): ItemSnapshot {
   const url = new URL(href)
+  console.log('paring url', url)
   switch (loc.part) {
     case 'href':
       return wrapState(deserialize(`${url.pathname}${url.search}${url.hash}`))
@@ -49,7 +50,11 @@ function parseURL(href: string, loc: LocationOption, deserialize: (string: strin
     case 'search':
       return url.search ? wrapState(deserialize(decodeURIComponent(url.search.substring(1)))) : null
     case 'queryParams': {
-      const searchParams = new URLSearchParams(url.search)
+      const search = '?' + url.hash.split('?')[1]
+      console.log('parseURL queryParams', search)
+
+      const searchParams = new URLSearchParams(search)
+
       const { param } = loc
       if (param != null) {
         const stateStr = searchParams.get(param)
@@ -57,6 +62,7 @@ function parseURL(href: string, loc: LocationOption, deserialize: (string: strin
       }
       return new Map(
         Array.from(searchParams.entries()).map(([key, value]) => {
+          console.log('key, value', key, value)
           try {
             return [key, deserialize(value)]
           } catch (error) {
@@ -71,6 +77,7 @@ function parseURL(href: string, loc: LocationOption, deserialize: (string: strin
 
 function encodeURL(href: string, loc: LocationOption, items: ItemSnapshot, serialize: (props: any) => string): string {
   const url = new URL(href)
+  console.log('encodeURL', url)
   switch (loc.part) {
     case 'href':
       return serialize(unwrapState(items))
@@ -82,7 +89,9 @@ function encodeURL(href: string, loc: LocationOption, items: ItemSnapshot, seria
       break
     case 'queryParams': {
       const { param } = loc
-      const searchParams = new URLSearchParams(url.search)
+      const [pathname, queryParams] = url.hash.split('?')
+      // const searchParams = new URLSearchParams(url.search)
+      const searchParams = new URLSearchParams('?' + queryParams)
       if (param != null) {
         searchParams.set(param, serialize(unwrapState(items)))
       } else {
@@ -90,7 +99,8 @@ function encodeURL(href: string, loc: LocationOption, items: ItemSnapshot, seria
           value instanceof DefaultValue ? searchParams.delete(itemKey) : searchParams.set(itemKey, serialize(value))
         }
       }
-      url.search = searchParams.toString()
+      console.log('setting hash', pathname + '?' + searchParams.toString())
+      url.hash = pathname + '?' + searchParams.toString()
       break
     }
     default:
@@ -132,14 +142,14 @@ const DEFAULT_BROWSER_INTERFACE = {
   }
 }
 
-function RecoilURLSync({
+export function RecoilURLHashParamsSync({
   storeKey,
   location: loc,
   serialize,
   deserialize,
   browserInterface,
   children
-}: RecoilURLSyncOptions): ReactNode {
+}: RecoilURLSyncOptions) {
   const { getURL, replaceURL, pushURL, listenChangeURL } = {
     ...DEFAULT_BROWSER_INTERFACE,
     ...(browserInterface ?? {})
@@ -158,7 +168,8 @@ function RecoilURLSync({
   const updateCachedState: () => void = useCallback(() => {
     cachedState.current = parseURL(getURL(), memoizedLoc, deserialize)
   }, [getURL, memoizedLoc, deserialize])
-  const cachedState = useRef<?ItemSnapshot>(null)
+  const cachedState = useRef(null)
+
   // Avoid executing updateCachedState() on each render
   const firstRender = useRef(true)
   firstRender.current && updateCachedState()
@@ -168,7 +179,7 @@ function RecoilURLSync({
   const write = useCallback(
     ({ diff, allItems }: WriteInterface) => {
       updateCachedState() // Just to be safe...
-
+      console.log('write')
       // This could be optimized with an itemKey-based registery if necessary to avoid
       // atom traversal.
       const atomRegistry = registries.get(storeKey)
@@ -196,11 +207,16 @@ function RecoilURLSync({
             replaceItems.set(key, value)
           }
         }
+        console.log('---> replacing with', encodeURL(getURL(), loc, replaceItems, serialize))
+
         replaceURL(encodeURL(getURL(), loc, replaceItems, serialize))
+
+        console.log('---> pushing with', encodeURL(getURL(), loc, allItems, serialize))
 
         // Next, push the URL with any atoms that caused a new URL history entry
         pushURL(encodeURL(getURL(), loc, allItems, serialize))
       } else {
+        console.log('---> replacing with', encodeURL(getURL(), loc, allItems, serialize))
         // Just replace the URL with the new state
         replaceURL(encodeURL(getURL(), loc, allItems, serialize))
       }
