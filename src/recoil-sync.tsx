@@ -1,17 +1,18 @@
-import { ReactNode, useCallback, useEffect } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo } from 'react'
 import { RecoilURLSyncJSON, RecoilURLSync } from 'recoil-sync'
 // import { history } from './routing'
-import { useLocation, createPath, useNavigate } from 'react-router-dom'
+import { useLocation, createPath, useNavigate, Outlet } from 'react-router-dom'
 import queryString from 'query-string'
 import { useRecoilState, useSetRecoilState } from 'recoil'
 import { RecoilURLHashParamsSync } from './recoil-sync-url-hash'
+import { useNav } from './routing'
 // import { filtersAtom } from './recoil-atoms'
 // import mapKeys from 'lodash.mapkeys'
 
 let callback: any = undefined
 
 export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
-  const navigate = useNavigate()
+  const navigate = useNav()
   // const location = useLocation()
   // console.log(location)
   // const setFilters = useSetRecoilState(filtersAtom)
@@ -69,54 +70,79 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
   //   setFilters(deserialize(location.search))
   // }, [])
 
+  const listenChangeURL = useCallback((handleUpdate: () => void) => {
+    const update = () => {
+      console.log('>>>>>>>>>listenChangeURL', window.document.location.href)
+      handleUpdate()
+    }
+    window.document.addEventListener('searchchanged', update)
+    return () => window.document.removeEventListener('searchchanged', update)
+  }, [])
+
+  const replaceURL: any = useCallback(
+    (urlString: string) => {
+      // const browserUrl = new URL(urlString)
+      console.log('replaceURL navigating', urlString)
+
+      // console.log('replaceURL', url)
+      // window.history.replaceState(null, '', url)
+      navigate(urlString, { replace: true })
+    },
+    [navigate]
+  )
+
+  const pushURL: any = useCallback(
+    (urlString: string) => {
+      // console.log('pushURL', url)
+      // const browserUrl = new URL(urlString)
+      console.log('pushURL navigating', urlString)
+      navigate(urlString, { replace: false })
+      // window.history.pushState(null, '', url)
+    },
+    [navigate]
+  )
+
+  const serialize = useCallback((value: any) => {
+    console.log('serializing', value)
+    // return String(value)
+    return value
+  }, [])
+
+  const deserialize = useCallback((value: any) => {
+    console.log('deserializing', value)
+    return value
+  }, [])
+
+  const browserInterface = useMemo(
+    () => ({
+      replaceURL,
+      // replaceURL: (url: string) => window.history.replaceState(null, '', url),
+      pushURL,
+      // pushURL: (url: string) => window.history.pushState(null, '', url),
+
+      // @ts-ignore
+      // getURL: () => {
+      //   // const baseLoc = window.document.location
+
+      //   // @ts-ignore
+      //   // const url: URL = new URL(window.document.location)
+      //   // const {hash, search, href} = url
+      //   console.log('get url', window.document.location.href.replace('/#/', '/'))
+      //   return window.document.location.href.replace('/#/', '/')
+      // },
+      listenChangeURL
+    }),
+    [replaceURL, pushURL, listenChangeURL]
+  )
+
   return (
     <RecoilURLHashParamsSync
       location={{ part: 'queryParams' }}
-      serialize={(value: any) => {
-        return String(value)
-      }}
-      deserialize={(value: any) => {
-        return String(value)
-      }}
-      browserInterface={{
-        replaceURL: (urlString: string) => {
-          const browserUrl = new URL(urlString)
-          console.log('replaceURL navigating', `${browserUrl.pathname}${browserUrl.search}`)
-
-          // console.log('replaceURL', url)
-          // window.history.replaceState(null, '', url)
-          navigate(`${browserUrl.pathname}${browserUrl.search}`, { replace: true })
-        },
-        // replaceURL: (url: string) => window.history.replaceState(null, '', url),
-        pushURL: (urlString: string) => {
-          // console.log('pushURL', url)
-          const browserUrl = new URL(urlString)
-          console.log('pushURL navigating', `${browserUrl.pathname}${browserUrl.search}`)
-          navigate(`${browserUrl.pathname}${browserUrl.search}`, { replace: false })
-          // window.history.pushState(null, '', url)
-        },
-        // pushURL: (url: string) => window.history.pushState(null, '', url),
-
-        // @ts-ignore
-        // getURL: () => {
-        //   // const baseLoc = window.document.location
-
-        //   // @ts-ignore
-        //   // const url: URL = new URL(window.document.location)
-        //   // const {hash, search, href} = url
-        //   console.log('get url', window.document.location.href.replace('/#/', '/'))
-        //   return window.document.location.href.replace('/#/', '/')
-        // },
-        listenChangeURL: (handleUpdate: () => void) => {
-          const update = () => {
-            console.log('listenChangeURL', window.document.location.href)
-            handleUpdate()
-          }
-          window.addEventListener('searchchanged', update)
-          return () => window.removeEventListener('searchchanged', update)
-        }
-      }}
+      serialize={serialize}
+      deserialize={deserialize}
+      browserInterface={browserInterface}
     >
+      <Outlet />
       {children}
     </RecoilURLHashParamsSync>
   )

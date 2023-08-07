@@ -8,8 +8,11 @@ import {
   StoreKey,
   SyncEffectOptions,
   syncEffect,
-  RecoilSync
+  RecoilSync,
+  RecoilSyncOptions,
+  URLSyncEffectOptions
 } from 'recoil-sync'
+import queryString from 'query-string'
 import { assertion, writableDict, mixed, CheckerReturnType } from '@recoiljs/refine'
 
 import { DefaultValue, AtomEffect, RecoilLoadable } from 'recoil'
@@ -26,6 +29,14 @@ type AtomRegistration = {
 }
 
 const registries: Map<StoreKey, Map<NodeKey, AtomRegistration>> = new Map()
+
+const getParsedSearch = (search: string) => {
+  return queryString.parse(search, {
+    parseNumbers: true,
+    parseBooleans: true,
+    arrayFormat: 'none'
+  })
+}
 
 const itemStateChecker = writableDict(mixed())
 const refineState = assertion(itemStateChecker)
@@ -53,15 +64,20 @@ function parseURL(href: string, loc: LocationOption, deserialize: (string: strin
       const search = '?' + url.hash.split('?')[1]
       console.log('parseURL queryParams', search)
 
-      const searchParams = new URLSearchParams(search)
+      // const searchParams = new URLSearchParams(search)
+      const parsedSearchParams = getParsedSearch(search)
 
       const { param } = loc
+
       if (param != null) {
-        const stateStr = searchParams.get(param)
+        console.log('param', param)
+        // const stateStr = searchParams.get(param)
+        const stateStr = parsedSearchParams[param]
         return stateStr != null ? wrapState(deserialize(stateStr)) : new Map()
       }
+
       return new Map(
-        Array.from(searchParams.entries()).map(([key, value]) => {
+        Array.from(Object.entries(parsedSearchParams)).map(([key, value]) => {
           console.log('key, value', key, value)
           try {
             return [key, deserialize(value)]
@@ -91,21 +107,42 @@ function encodeURL(href: string, loc: LocationOption, items: ItemSnapshot, seria
       const { param } = loc
       const [pathname, queryParams] = url.hash.split('?')
       // const searchParams = new URLSearchParams(url.search)
-      const searchParams = new URLSearchParams('?' + queryParams)
+      // const searchParams = new URLSearchParams('?' + queryParams)
+      const parsedSearchParams = getParsedSearch('?' + queryParams)
       if (param != null) {
+        console.log('encodeURL param', param)
         searchParams.set(param, serialize(unwrapState(items)))
       } else {
+        console.log('encodeURL items', items)
         for (const [itemKey, value] of items.entries()) {
-          value instanceof DefaultValue ? searchParams.delete(itemKey) : searchParams.set(itemKey, serialize(value))
+          // value instanceof DefaultValue ? searchParams.delete(itemKey) : searchParams.set(itemKey, serialize(value))
+          console.log('encodeURL itemKey, value', itemKey, value)
+          if (value instanceof DefaultValue) {
+            console.log('encodeURL', 'deleting', itemKey)
+            delete parsedSearchParams[itemKey]
+          } else {
+            console.log('encodeURL', 'setting', itemKey, serialize(value))
+            parsedSearchParams[itemKey] = value
+          }
         }
       }
-      console.log('setting hash', pathname + '?' + searchParams.toString())
-      url.hash = pathname + '?' + searchParams.toString()
+      const pathWithHash =
+        pathname +
+        '?' +
+        queryString.stringify(parsedSearchParams, {
+          arrayFormat: 'none',
+          skipEmptyString: true,
+          skipNull: true
+        })
+      console.log('setting hash', pathWithHash)
+      // console.log('setting hash', pathname + '?' + searchParams.toString())
+      url.hash = pathWithHash
       break
     }
     default:
       throw err(`Unknown URL location part: "${loc}"`)
   }
+  console.log('returning href', url.href)
   return url.href
 }
 
@@ -183,6 +220,7 @@ export function RecoilURLHashParamsSync({
       // This could be optimized with an itemKey-based registery if necessary to avoid
       // atom traversal.
       const atomRegistry = registries.get(storeKey)
+      console.log('atomRegistry', atomRegistry)
       const itemsToPush =
         atomRegistry != null
           ? new Set(
@@ -198,27 +236,35 @@ export function RecoilURLHashParamsSync({
                 )
             )
           : null
+      console.log('itemsToPush', itemsToPush)
 
       if (itemsToPush?.size && cachedState.current != null) {
         const replaceItems: ItemSnapshot = cachedState.current
         // First, repalce the URL with any atoms that replace the URL history
         for (const [key, value] of allItems) {
+          console.log('should be setting', key, value)
           if (!itemsToPush.has(key)) {
             replaceItems.set(key, value)
           }
         }
         console.log('---> replacing with', encodeURL(getURL(), loc, replaceItems, serialize))
+        const urlForReplace = encodeURL(getURL(), loc, replaceItems, serialize)
 
-        replaceURL(encodeURL(getURL(), loc, replaceItems, serialize))
+        console.log('urlForReplace', urlForReplace.split('/#')[1])
+
+        replaceURL(urlForReplace.split('/#')[1])
 
         console.log('---> pushing with', encodeURL(getURL(), loc, allItems, serialize))
-
+        const urlForPush = encodeURL(getURL(), loc, allItems, serialize)
+        console.log('urlForPush', urlForPush.split('/#')[1])
         // Next, push the URL with any atoms that caused a new URL history entry
-        pushURL(encodeURL(getURL(), loc, allItems, serialize))
+        pushURL(urlForPush.split('/#')[1])
       } else {
         console.log('---> replacing with', encodeURL(getURL(), loc, allItems, serialize))
         // Just replace the URL with the new state
-        replaceURL(encodeURL(getURL(), loc, allItems, serialize))
+        const urlForReplace = encodeURL(getURL(), loc, allItems, serialize)
+        console.log('urlForReplace', urlForReplace.split('/#')[1])
+        replaceURL(urlForReplace.split('/#')[1])
       }
       cachedState.current = allItems
     },
@@ -231,7 +277,9 @@ export function RecoilURLHashParamsSync({
 
   const listen = useCallback(
     ({ updateAllKnownItems }: ListenInterface) => {
+      console.log('LISTEN')
       function handleUpdate() {
+        console.log('~~~~~~~~~~~~~~~~~~~handleUpdate')
         updateCachedState()
         if (cachedState.current != null) {
           updateAllKnownItems(cachedState.current)
@@ -258,7 +306,10 @@ export function RecoilURLHashParamsSync({
 ///////////////////////
 type HistoryOption = 'push' | 'replace'
 
-export function urlSyncEffect<T>({ history = 'replace', ...options }: any): AtomEffect<T> {
+export function urlSyncEffect<T>({
+  history = 'replace',
+  ...options
+}: URLSyncEffectOptions & { history: 'push' | 'replace' }): AtomEffect<T> {
   const atomEffect = syncEffect<T>(options)
   return (effectArgs: { node: { key: string } }) => {
     // Register URL sync options

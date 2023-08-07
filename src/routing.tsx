@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useCallback, useRef } from 'react'
 import {
   Route,
   unstable_HistoryRouter as HistoryRouter,
@@ -6,41 +6,78 @@ import {
   BrowserRouter,
   createHashRouter,
   HashRouter,
-  createRoutesFromElements
+  createRoutesFromElements,
+  useNavigate,
+  NavigateFunction
 } from 'react-router-dom'
 import { Action, To, createBrowserHistory, createPath, parsePath } from '@remix-run/router'
 import App from './App'
 import { View } from './view'
+import { RecoilSyncComponent } from './recoil-sync'
 
 // export const history = createBrowserHistory()
 
-// export const router = createHashRouter(createRoutesFromElements(
-//   <Route path="/" element={<App />}>
-//     <Route path="page-1/*">
-//       <Route path="view-1" index element={<View1 />} />
-//       <Route path="view-2" element={<View2 />} />
-//     </Route>
-//     <Route path="page-2/*">
-//       <Route path="view-1" index element={<View1 />} />
-//       <Route path="view-2" element={<View2 />} />
-//     </Route>
-//   </Route>
-// ))
+export const router = createHashRouter(
+  createRoutesFromElements(
+    <Route path="/" element={<RecoilSyncComponent />}>
+      <Route path="view" index element={<View />} />
+    </Route>
+  )
+)
 
 export const Routing = ({ children }: { children?: ReactNode }) => {
   return (
     <>
-      <HashRouter window={window}>
-        <Routes>
-          <Route path="/" element={<App />}>
-            <Route path="view" index element={<View />} />
-          </Route>
-        </Routes>
-        {children}
-      </HashRouter>
+      <Routes>
+        <Route path="/" element={<RecoilSyncComponent />}>
+          <Route path="view" index element={<View />} />
+        </Route>
+      </Routes>
+      {children}
     </>
   )
 }
+
+export const useNav = (): ReturnType<typeof useNavigate> => {
+  const navRef = useRef(useNavigate())
+  const originalNavigate = navRef.current
+
+  // @ts-ignore fix typing being weird but this is correct
+  const navigate: NavigateFunction = useCallback(
+    (to, opts) => {
+      originalNavigate(to, opts)
+
+      window.document.dispatchEvent(
+        new CustomEvent('searchchanged', {
+          detail: { search: window.document.location.hash.split('?')?.[1] ?? '', origin: 'router' }
+        })
+      )
+    },
+    [originalNavigate]
+  )
+
+  return navigate
+}
+
+// export const useSidebarNavigate = (): ReturnType<typeof useNavigate> => {
+//   const { leftSidebarSize, toggleLeftSidebar } = useSidebarNavContext()
+
+//   const originalNavigate = useNavigate()
+
+// @ts-ignore fix typing being weird but this is correct
+// const navigate: NavigateFunction = useCallback(
+//   (to, opts) => {
+//     if (leftSidebarSize === 'full') {
+//       toggleLeftSidebar(false)
+//     }
+//     eventManager.emit('close-angular-right-panel')
+//     originalNavigate(to, opts)
+//   },
+//   [leftSidebarSize]
+// )
+
+//   return navigate
+// }
 
 // <HistoryRouter
 //   history={createBrowserHistory()}
