@@ -6,10 +6,8 @@ import {
   ItemSnapshot,
   ReadItem,
   StoreKey,
-  SyncEffectOptions,
   syncEffect,
   RecoilSync,
-  RecoilSyncOptions,
   URLSyncEffectOptions
 } from 'recoil-sync'
 import queryString from 'query-string'
@@ -17,8 +15,6 @@ import { assertion, writableDict, mixed, CheckerReturnType } from '@recoiljs/ref
 
 import { DefaultValue, AtomEffect, RecoilLoadable } from 'recoil'
 import { useCallback, useEffect, useMemo, useRef, ReactNode } from 'react'
-
-// const err = require('recoil-shared/util/Recoil_err')
 
 type NodeKey = string
 
