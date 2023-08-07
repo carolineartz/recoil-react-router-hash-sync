@@ -175,7 +175,7 @@ const DEFAULT_BROWSER_INTERFACE = {
   }
 }
 
-export function RecoilURLHashParamsSync({
+export function RecoilURLHashQuerySync({
   storeKey,
   location: loc,
   serialize,
@@ -302,7 +302,7 @@ export function RecoilURLHashParamsSync({
 ///////////////////////
 type HistoryOption = 'push' | 'replace'
 
-export function urlSyncEffect<T>({
+export function urlHashQuerySyncEffect<T>({
   history = 'replace',
   ...options
 }: URLSyncEffectOptions & { history: 'push' | 'replace' }): AtomEffect<T> {

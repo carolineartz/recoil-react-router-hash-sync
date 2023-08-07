@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import { RecoilRoot } from 'recoil'
 import './index.css'
-import App from './App'
+import { ReactRouterState } from './react-router-state'
 import reportWebVitals from './reportWebVitals'
 import { RoutesComponent } from './routing'
 
@@ -13,7 +13,7 @@ root.render(
     <RecoilRoot>
       <HashRouter>
         <RoutesComponent />
-        <App />
+        <ReactRouterState />
       </HashRouter>
     </RecoilRoot>
   </React.StrictMode>

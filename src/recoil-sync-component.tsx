@@ -1,6 +1,6 @@
 import { ReactNode, useCallback, useMemo } from 'react'
 import { Outlet } from 'react-router-dom'
-import { RecoilURLHashParamsSync } from './recoil-sync-url-hash'
+import { RecoilURLHashQuerySync } from './recoil-url-hash-query-sync'
 import { useNav } from './routing'
 
 export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
@@ -51,7 +51,7 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
   )
 
   return (
-    <RecoilURLHashParamsSync
+    <RecoilURLHashQuerySync
       location={{ part: 'queryParams' }}
       serialize={serialize}
       deserialize={deserialize}
@@ -59,6 +59,6 @@ export const RecoilSyncComponent = ({ children }: { children?: ReactNode }) => {
     >
       <Outlet />
       {children}
-    </RecoilURLHashParamsSync>
+    </RecoilURLHashQuerySync>
   )
 }
